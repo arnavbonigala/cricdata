@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cricdata"
+version = "0.1.0"
+description = "Python client for retrieving cricket data from ESPNCricinfo"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Arnav Bonigala" },
+]
+keywords = ["cricket", "espncricinfo", "cricinfo", "sports", "analytics", "cricdata"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "curl_cffi>=0.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/arnavbonigala/cricdata"
+Repository = "https://github.com/arnavbonigala/cricdata"
+Issues = "https://github.com/arnavbonigala/cricdata/issues"
