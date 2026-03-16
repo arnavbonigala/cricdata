@@ -123,8 +123,6 @@ async def main():
 asyncio.run(main())
 ```
 
-See `examples/ipl_matches_async.py` for a full working script.
-
 ### Team and ground stats from Statsguru
 
 ```python
