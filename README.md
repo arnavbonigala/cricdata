@@ -92,6 +92,35 @@ for match in ci.live_matches():
     print(match["title"], "-", series.get("longName", ""))
 ```
 
+### Async client for concurrent fetching
+
+`AsyncCricinfoClient` lets you overlap HTTP requests when fetching many matches at once. It currently covers `series_fixtures` and `match_scorecard`.
+
+```python
+import asyncio
+from cricdata import AsyncCricinfoClient
+
+async def main():
+    async with AsyncCricinfoClient() as ci:
+        fixtures = await ci.series_fixtures("ipl-2025-1449924")
+        matches = fixtures["content"]["matches"]
+
+        # fetch multiple scorecards concurrently
+        sem = asyncio.Semaphore(15)
+
+        async def fetch(m):
+            s = f"{m['series']['slug']}-{m['series']['objectId']}"
+            ms = f"{m['slug']}-{m['objectId']}"
+            async with sem:
+                return await ci.match_scorecard(s, ms)
+
+        scorecards = await asyncio.gather(*[fetch(m) for m in matches])
+
+asyncio.run(main())
+```
+
+See `examples/ipl_matches_async.py` for a full working script.
+
 ### Team and ground stats from Statsguru
 
 ```python

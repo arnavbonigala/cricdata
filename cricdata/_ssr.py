@@ -7,7 +7,7 @@ import json
 import re
 from typing import Dict, List, Tuple
 
-from ._session import Session
+from ._session import AsyncSession, Session
 
 _NEXT_DATA_RE = re.compile(
     r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>'
@@ -22,6 +22,13 @@ _TEAM_RANKING_PAGES = {
 }
 
 
+def _extract_page_data(text: str, url: str) -> dict:
+    m = _NEXT_DATA_RE.search(text)
+    if not m:
+        raise ValueError(f"No __NEXT_DATA__ in {url}")
+    return json.loads(m.group(1))["props"]["appPageProps"]["data"]
+
+
 class SSR:
     """Fetch espncricinfo.com pages and extract embedded JSON data."""
 
@@ -33,10 +40,7 @@ class SSR:
         url = f"{_BASE}{path}" if path.startswith("/") else path
         r = self._s.get(url)
         r.raise_for_status()
-        m = _NEXT_DATA_RE.search(r.text)
-        if not m:
-            raise ValueError(f"No __NEXT_DATA__ in {url}")
-        return json.loads(m.group(1))["props"]["appPageProps"]["data"]
+        return _extract_page_data(r.text, url)
 
     def _scorecard_data(self, series_slug: str, match_slug: str) -> dict:
         key = (series_slug, match_slug)
@@ -190,3 +194,24 @@ class SSR:
             raise ValueError(f"Unknown format {fmt!r}, use: {list(_TEAM_RANKING_PAGES)}")
         data = self._page_data(f"/rankings/content/page/{page_id}.html")
         return data.get("content", {}).get("rankings", [])
+
+
+class AsyncSSR:
+    """Async variant of SSR for concurrent page fetches."""
+
+    def __init__(self, session: AsyncSession):
+        self._s = session
+
+    async def _page_data(self, path: str) -> dict:
+        url = f"{_BASE}{path}" if path.startswith("/") else path
+        r = await self._s.get(url)
+        r.raise_for_status()
+        return _extract_page_data(r.text, url)
+
+    async def series_fixtures(self, slug: str) -> dict:
+        return await self._page_data(f"/series/{slug}/match-schedule-fixtures")
+
+    async def match_scorecard(self, series_slug: str, match_slug: str) -> dict:
+        return await self._page_data(
+            f"/series/{series_slug}/{match_slug}/full-scorecard"
+        )

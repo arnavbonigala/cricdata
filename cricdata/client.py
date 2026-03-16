@@ -6,8 +6,8 @@ import re
 from typing import Dict, List, Optional, Union
 
 from ._espn import ESPN
-from ._session import Session
-from ._ssr import SSR
+from ._session import AsyncSession, Session
+from ._ssr import AsyncSSR, SSR
 from ._statsguru import Statsguru
 
 _TRAILING_ID_RE = re.compile(r"-(\d+)$")
@@ -225,3 +225,32 @@ class CricinfoClient:
     def team_rankings(self, fmt: str = "test") -> List[dict]:
         """ICC team rankings (test, odi, or t20i)."""
         return self._ssr.team_rankings(fmt)
+
+
+class AsyncCricinfoClient:
+    """Async client for concurrent cricket data fetching.
+
+    Exposes a focused subset of the CricinfoClient API as async methods.
+    Use as an async context manager to ensure proper cleanup.
+    """
+
+    def __init__(self, impersonate: str = "chrome", timeout: int = 30):
+        self._session = AsyncSession(impersonate=impersonate, timeout=timeout)
+        self._ssr = AsyncSSR(self._session)
+
+    async def series_fixtures(self, slug: str) -> dict:
+        """Match schedule / upcoming fixtures for a series."""
+        return await self._ssr.series_fixtures(slug)
+
+    async def match_scorecard(self, series_slug: str, match_slug: str) -> dict:
+        """Full scorecard for a match (innings, batsmen, bowlers, FOW)."""
+        return await self._ssr.match_scorecard(series_slug, match_slug)
+
+    async def aclose(self) -> None:
+        await self._session.aclose()
+
+    async def __aenter__(self) -> "AsyncCricinfoClient":
+        return self
+
+    async def __aexit__(self, *exc) -> None:
+        await self.aclose()

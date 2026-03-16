@@ -1,4 +1,4 @@
-from .client import CricinfoClient
+from .client import AsyncCricinfoClient, CricinfoClient
 
-__all__ = ["CricinfoClient"]
-__version__ = "0.1.0"
+__all__ = ["AsyncCricinfoClient", "CricinfoClient"]
+__version__ = "0.2.0"
