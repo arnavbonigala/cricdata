@@ -94,7 +94,7 @@ for match in ci.live_matches():
 
 ### Async client for concurrent fetching
 
-`AsyncCricinfoClient` lets you overlap HTTP requests when fetching many matches at once. It currently covers `series_fixtures` and `match_scorecard`.
+`AsyncCricinfoClient` is a full async mirror of `CricinfoClient` — every method listed in the API reference below is available as an `async def`. Use it as an async context manager and overlap requests with `asyncio.gather` for large batch workloads.
 
 ```python
 import asyncio
@@ -105,7 +105,7 @@ async def main():
         fixtures = await ci.series_fixtures("ipl-2025-1449924")
         matches = fixtures["content"]["matches"]
 
-        # fetch multiple scorecards concurrently
+        # fetch multiple scorecards concurrently (bounded)
         sem = asyncio.Semaphore(15)
 
         async def fetch(m):
@@ -115,6 +115,10 @@ async def main():
                 return await ci.match_scorecard(s, ms)
 
         scorecards = await asyncio.gather(*[fetch(m) for m in matches])
+
+        # all other methods work the same way
+        bio = await ci.player_bio(253802)
+        india = await ci.team_career_stats(6, fmt="test")
 
 asyncio.run(main())
 ```

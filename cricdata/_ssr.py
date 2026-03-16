@@ -197,7 +197,7 @@ class SSR:
 
 
 class AsyncSSR:
-    """Async variant of SSR for concurrent page fetches."""
+    """Async variant of SSR — mirrors every SSR method."""
 
     def __init__(self, session: AsyncSession):
         self._s = session
@@ -208,10 +208,121 @@ class AsyncSSR:
         r.raise_for_status()
         return _extract_page_data(r.text, url)
 
-    async def series_fixtures(self, slug: str) -> dict:
-        return await self._page_data(f"/series/{slug}/match-schedule-fixtures")
-
-    async def match_scorecard(self, series_slug: str, match_slug: str) -> dict:
+    async def _scorecard_data(self, series_slug: str, match_slug: str) -> dict:
         return await self._page_data(
             f"/series/{series_slug}/{match_slug}/full-scorecard"
         )
+
+    # Matches — basic
+
+    async def live_matches(self) -> List[dict]:
+        data = await self._page_data("/live-cricket-score")
+        return data.get("content", {}).get("matches", [])
+
+    async def match_scorecard(self, series_slug: str, match_slug: str) -> dict:
+        return await self._scorecard_data(series_slug, match_slug)
+
+    async def match_commentary(self, series_slug: str, match_slug: str) -> dict:
+        return await self._page_data(
+            f"/series/{series_slug}/{match_slug}/ball-by-ball-commentary"
+        )
+
+    # Matches — detailed analytics
+
+    async def match_ball_by_ball(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+        data = await self._scorecard_data(series_slug, match_slug)
+        result = []
+        for inn in data.get("content", {}).get("innings", []):
+            balls = []
+            for ov in inn.get("inningOvers", []):
+                balls.extend(ov.get("balls", []))
+            result.append(balls)
+        return result
+
+    async def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+        data = await self._scorecard_data(series_slug, match_slug)
+        return [
+            inn.get("inningPartnerships", [])
+            for inn in data.get("content", {}).get("innings", [])
+        ]
+
+    async def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+        data = await self._scorecard_data(series_slug, match_slug)
+        return [
+            inn.get("inningFallOfWickets", [])
+            for inn in data.get("content", {}).get("innings", [])
+        ]
+
+    async def match_overs(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+        data = await self._scorecard_data(series_slug, match_slug)
+        result = []
+        for inn in data.get("content", {}).get("innings", []):
+            overs = []
+            for ov in inn.get("inningOvers", []):
+                ov_copy = {k: v for k, v in ov.items() if k != "balls"}
+                overs.append(ov_copy)
+            result.append(overs)
+        return result
+
+    async def match_info(self, series_slug: str, match_slug: str) -> dict:
+        data = await self._scorecard_data(series_slug, match_slug)
+        match = data.get("match", {})
+        content = data.get("content", {})
+        support = content.get("supportInfo", {})
+
+        teams_by_id = {}
+        for inn in content.get("innings", []):
+            team = inn.get("team", {})
+            if team.get("id"):
+                teams_by_id[team["id"]] = team
+
+        toss_winner_id = match.get("tossWinnerTeamId")
+        toss_choice_map = {1: "bat", 2: "field"}
+
+        return {
+            "match": match,
+            "toss": {
+                "winner_team_id": toss_winner_id,
+                "winner_team": teams_by_id.get(toss_winner_id, {}).get("longName"),
+                "decision": toss_choice_map.get(match.get("tossWinnerChoice")),
+            },
+            "venue": match.get("ground", {}),
+            "weather": support.get("weather"),
+            "player_awards": content.get("matchPlayerAwards", []),
+            "over_groups": [
+                inn.get("inningOverGroups", [])
+                for inn in content.get("innings", [])
+            ],
+        }
+
+    # Series
+
+    async def series(self, slug: str) -> dict:
+        return await self._page_data(f"/series/{slug}")
+
+    async def series_matches(self, slug: str) -> dict:
+        return await self._page_data(f"/series/{slug}/match-results")
+
+    async def series_standings(self, slug: str) -> dict:
+        return await self._page_data(f"/series/{slug}/points-table-standings")
+
+    async def series_stats(self, slug: str) -> dict:
+        return await self._page_data(f"/series/{slug}/stats")
+
+    async def series_squads(self, slug: str) -> dict:
+        return await self._page_data(f"/series/{slug}/squads")
+
+    async def series_fixtures(self, slug: str) -> dict:
+        return await self._page_data(f"/series/{slug}/match-schedule-fixtures")
+
+    # Teams & Rankings
+
+    async def team(self, slug: str) -> dict:
+        return await self._page_data(f"/team/{slug}")
+
+    async def team_rankings(self, fmt: str) -> List[dict]:
+        page_id = _TEAM_RANKING_PAGES.get(fmt)
+        if page_id is None:
+            raise ValueError(f"Unknown format {fmt!r}, use: {list(_TEAM_RANKING_PAGES)}")
+        data = await self._page_data(f"/rankings/content/page/{page_id}.html")
+        return data.get("content", {}).get("rankings", [])

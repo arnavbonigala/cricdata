@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Union
 
-from ._session import Session
+from ._session import AsyncSession, Session
 
 _PLAYER_BASE = "https://stats.espncricinfo.com/ci/engine/player"
 _TEAM_BASE = "https://stats.espncricinfo.com/ci/engine/team"
@@ -257,4 +257,121 @@ class Statsguru:
         cls = _class_param(fmt)
         url = f"{_GROUND_BASE}/{ground_id}.html?class={cls};orderby=default;template=results;type=team"
         html = self._fetch_url(url)
+        return _summary_and_detail(_parse_tables(html), "breakdowns")
+
+
+class AsyncStatsguru:
+    """Async variant of Statsguru — mirrors every Statsguru method."""
+
+    def __init__(self, session: AsyncSession):
+        self._s = session
+
+    async def _fetch_url(self, url: str) -> str:
+        r = await self._s.get(url)
+        r.raise_for_status()
+        return r.text
+
+    def _player_url(
+        self,
+        player_id: Union[int, str],
+        fmt: str,
+        stat_type: str,
+        view: Optional[str] = None,
+        filters: Optional[Dict[str, Union[str, int]]] = None,
+    ) -> str:
+        cls = _class_param(fmt)
+        parts = f"class={cls};orderby=default;template=results;type={stat_type}"
+        if view:
+            parts += f";view={view}"
+        parts += _build_filter_params(filters)
+        return f"{_PLAYER_BASE}/{player_id}.html?{parts}"
+
+    async def player_career_stats(
+        self,
+        player_id: Union[int, str],
+        fmt: str = "test",
+        stat_type: str = "batting",
+        filters: Optional[Dict[str, Union[str, int]]] = None,
+    ) -> dict:
+        html = await self._fetch_url(
+            self._player_url(player_id, fmt, stat_type, filters=filters)
+        )
+        return _summary_and_detail(_parse_tables(html), "breakdowns")
+
+    async def player_innings(
+        self,
+        player_id: Union[int, str],
+        fmt: str = "test",
+        stat_type: str = "batting",
+        filters: Optional[Dict[str, Union[str, int]]] = None,
+    ) -> dict:
+        html = await self._fetch_url(
+            self._player_url(player_id, fmt, stat_type, view="innings", filters=filters)
+        )
+        return _summary_and_detail(_parse_tables(html), "innings")
+
+    async def player_match_list(
+        self,
+        player_id: Union[int, str],
+        fmt: str = "test",
+        stat_type: str = "batting",
+        filters: Optional[Dict[str, Union[str, int]]] = None,
+    ) -> dict:
+        html = await self._fetch_url(
+            self._player_url(player_id, fmt, stat_type, view="match", filters=filters)
+        )
+        return _summary_and_detail(_parse_tables(html), "matches")
+
+    async def player_series_list(
+        self,
+        player_id: Union[int, str],
+        fmt: str = "test",
+        stat_type: str = "batting",
+        filters: Optional[Dict[str, Union[str, int]]] = None,
+    ) -> dict:
+        html = await self._fetch_url(
+            self._player_url(player_id, fmt, stat_type, view="series", filters=filters)
+        )
+        return _summary_and_detail(_parse_tables(html), "series")
+
+    async def player_ground_stats(
+        self,
+        player_id: Union[int, str],
+        fmt: str = "test",
+        stat_type: str = "batting",
+        filters: Optional[Dict[str, Union[str, int]]] = None,
+    ) -> dict:
+        html = await self._fetch_url(
+            self._player_url(player_id, fmt, stat_type, view="ground", filters=filters)
+        )
+        return _summary_and_detail(_parse_tables(html), "grounds")
+
+    async def team_career_stats(
+        self,
+        team_id: Union[int, str],
+        fmt: str = "test",
+    ) -> dict:
+        cls = _class_param(fmt)
+        url = f"{_TEAM_BASE}/{team_id}.html?class={cls};orderby=default;template=results;type=team"
+        html = await self._fetch_url(url)
+        return _summary_and_detail(_parse_tables(html), "breakdowns")
+
+    async def team_match_list(
+        self,
+        team_id: Union[int, str],
+        fmt: str = "test",
+    ) -> dict:
+        cls = _class_param(fmt)
+        url = f"{_TEAM_BASE}/{team_id}.html?class={cls};orderby=default;template=results;type=team;view=results"
+        html = await self._fetch_url(url)
+        return _summary_and_detail(_parse_tables(html), "matches")
+
+    async def ground_stats(
+        self,
+        ground_id: Union[int, str],
+        fmt: str = "test",
+    ) -> dict:
+        cls = _class_param(fmt)
+        url = f"{_GROUND_BASE}/{ground_id}.html?class={cls};orderby=default;template=results;type=team"
+        html = await self._fetch_url(url)
         return _summary_and_detail(_parse_tables(html), "breakdowns")
