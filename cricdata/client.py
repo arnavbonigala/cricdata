@@ -86,6 +86,16 @@ class CricinfoClient:
         """Match-level metadata: toss, venue, weather, awards, phase stats."""
         return self._ssr.match_info(series_slug, match_slug)
 
+    def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
+        """Weather conditions for a match.
+
+        Returns ESPNCricinfo weather for live matches or Open-Meteo
+        historical data for completed matches.  The returned dict
+        contains a ``source`` key (``"espncricinfo"`` or ``"open-meteo"``).
+        Returns ``None`` when weather cannot be resolved.
+        """
+        return self._ssr.match_weather(series_slug, match_slug)
+
     # ------------------------------------------------------------------
     # Series
     # ------------------------------------------------------------------
@@ -278,6 +288,9 @@ class AsyncCricinfoClient:
 
     async def match_info(self, series_slug: str, match_slug: str) -> dict:
         return await self._ssr.match_info(series_slug, match_slug)
+
+    async def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
+        return await self._ssr.match_weather(series_slug, match_slug)
 
     # ------------------------------------------------------------------
     # Series

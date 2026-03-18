@@ -75,6 +75,7 @@ print(f"{len(filtered['innings'])} innings")
 
 ```python
 info = ci.match_info(series_slug, match_slug)
+print(info["time"])        # {"startTime": "...", "hoursInfo": "...", ...}
 print(info["toss"])        # {"winner_team": "...", "decision": "field"}
 print(info["venue"])       # {"name": "Eden Gardens, Kolkata", ...}
 print(info["over_groups"]) # powerplay / middle / death phase aggregates
@@ -82,6 +83,12 @@ print(info["over_groups"]) # powerplay / middle / death phase aggregates
 overs = ci.match_overs(series_slug, match_slug)  # over-by-over progression
 fow = ci.match_fall_of_wickets(series_slug, match_slug)
 partnerships = ci.match_partnerships(series_slug, match_slug)
+
+# Weather (works for live and completed matches)
+weather = ci.match_weather(series_slug, match_slug)
+print(weather["source"])   # "espncricinfo" (live) or "open-meteo" (historical)
+if weather["source"] == "open-meteo":
+    print(weather["hourly"]["temperature_2m"])  # hourly temps for match day(s)
 ```
 
 ### Live matches
@@ -151,7 +158,8 @@ All methods live on `CricinfoClient` and return JSON-serialisable dicts/lists.
 | `match_overs(series_slug, match_slug)` | series & match slugs | Over-by-over progression per innings |
 | `match_partnerships(series_slug, match_slug)` | series & match slugs | Partnership details per innings |
 | `match_fall_of_wickets(series_slug, match_slug)` | series & match slugs | FOW per innings |
-| `match_info(series_slug, match_slug)` | series & match slugs | Toss, venue, weather, awards, phase stats |
+| `match_info(series_slug, match_slug)` | series & match slugs | Toss, venue, time, weather, awards, phase stats |
+| `match_weather(series_slug, match_slug)` | series & match slugs | Weather conditions (live via ESPNCricinfo, historical via Open-Meteo) |
 
 ### Series
 

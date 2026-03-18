@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 import re
 from typing import Dict, List, Tuple
@@ -14,6 +13,13 @@ _NEXT_DATA_RE = re.compile(
 )
 
 _BASE = "https://www.espncricinfo.com"
+_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
+
+_ARCHIVE_HOURLY_VARS = (
+    "temperature_2m,relative_humidity_2m,precipitation,"
+    "weather_code,wind_speed_10m,cloud_cover"
+)
 
 _TEAM_RANKING_PAGES = {
     "test": 211271,
@@ -132,7 +138,7 @@ class SSR:
         data = self._scorecard_data(series_slug, match_slug)
         match = data.get("match", {})
         content = data.get("content", {})
-        support = content.get("supportInfo", {})
+        support = content.get("supportInfo") or {}
 
         teams_by_id = {}
         for inn in content.get("innings", []):
@@ -145,6 +151,18 @@ class SSR:
 
         return {
             "match": match,
+            "time": {
+                "startDate": match.get("startDate"),
+                "startTime": match.get("startTime"),
+                "endDate": match.get("endDate"),
+                "endTime": match.get("endTime"),
+                "daysInfo": match.get("daysInfo"),
+                "hoursInfo": match.get("hoursInfo"),
+                "scheduledDays": match.get("scheduledDays"),
+                "scheduledOvers": match.get("scheduledOvers"),
+                "floodlit": match.get("floodlit"),
+                "dayType": match.get("dayType"),
+            },
             "toss": {
                 "winner_team_id": toss_winner_id,
                 "winner_team": teams_by_id.get(toss_winner_id, {}).get("longName"),
@@ -157,6 +175,65 @@ class SSR:
                 inn.get("inningOverGroups", [])
                 for inn in content.get("innings", [])
             ],
+        }
+
+    def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
+        """Weather for a match. Uses ESPNCricinfo when available, otherwise
+        falls back to Open-Meteo historical data (free, no key required).
+
+        Returns dict with a ``source`` key (``"espncricinfo"`` or
+        ``"open-meteo"``) so callers know which schema to expect, or
+        ``None`` when weather cannot be resolved.
+        """
+        data = self._scorecard_data(series_slug, match_slug)
+        match = data.get("match", {})
+        support = (data.get("content", {}).get("supportInfo") or {})
+
+        espn = support.get("weather")
+        if espn:
+            return {"source": "espncricinfo", **espn}
+
+        return self._open_meteo_weather(match)
+
+    def _open_meteo_weather(self, match: dict) -> dict | None:
+        town = match.get("ground", {}).get("town", {})
+        town_name = town.get("name")
+        if not town_name:
+            return None
+
+        r = self._s.get(_GEOCODE_URL, params={"name": town_name, "count": 1})
+        r.raise_for_status()
+        results = r.json().get("results")
+        if not results:
+            return None
+
+        lat, lon = results[0]["latitude"], results[0]["longitude"]
+        start = (match.get("startDate") or "")[:10]
+        end = (match.get("endDate") or start)[:10]
+        if not start:
+            return None
+
+        r = self._s.get(
+            _ARCHIVE_URL,
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "start_date": start,
+                "end_date": end,
+                "hourly": _ARCHIVE_HOURLY_VARS,
+                "timezone": town.get("timezone", "UTC"),
+            },
+        )
+        if not r.ok:
+            return None
+        body = r.json()
+        return {
+            "source": "open-meteo",
+            "latitude": body.get("latitude"),
+            "longitude": body.get("longitude"),
+            "timezone": body.get("timezone"),
+            "hourly_units": body.get("hourly_units"),
+            "hourly": body.get("hourly"),
         }
 
     # ------------------------------------------------------------------
@@ -268,7 +345,7 @@ class AsyncSSR:
         data = await self._scorecard_data(series_slug, match_slug)
         match = data.get("match", {})
         content = data.get("content", {})
-        support = content.get("supportInfo", {})
+        support = content.get("supportInfo") or {}
 
         teams_by_id = {}
         for inn in content.get("innings", []):
@@ -281,6 +358,18 @@ class AsyncSSR:
 
         return {
             "match": match,
+            "time": {
+                "startDate": match.get("startDate"),
+                "startTime": match.get("startTime"),
+                "endDate": match.get("endDate"),
+                "endTime": match.get("endTime"),
+                "daysInfo": match.get("daysInfo"),
+                "hoursInfo": match.get("hoursInfo"),
+                "scheduledDays": match.get("scheduledDays"),
+                "scheduledOvers": match.get("scheduledOvers"),
+                "floodlit": match.get("floodlit"),
+                "dayType": match.get("dayType"),
+            },
             "toss": {
                 "winner_team_id": toss_winner_id,
                 "winner_team": teams_by_id.get(toss_winner_id, {}).get("longName"),
@@ -293,6 +382,58 @@ class AsyncSSR:
                 inn.get("inningOverGroups", [])
                 for inn in content.get("innings", [])
             ],
+        }
+
+    async def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
+        data = await self._scorecard_data(series_slug, match_slug)
+        match = data.get("match", {})
+        support = (data.get("content", {}).get("supportInfo") or {})
+
+        espn = support.get("weather")
+        if espn:
+            return {"source": "espncricinfo", **espn}
+
+        return await self._open_meteo_weather(match)
+
+    async def _open_meteo_weather(self, match: dict) -> dict | None:
+        town = match.get("ground", {}).get("town", {})
+        town_name = town.get("name")
+        if not town_name:
+            return None
+
+        r = await self._s.get(_GEOCODE_URL, params={"name": town_name, "count": 1})
+        r.raise_for_status()
+        results = r.json().get("results")
+        if not results:
+            return None
+
+        lat, lon = results[0]["latitude"], results[0]["longitude"]
+        start = (match.get("startDate") or "")[:10]
+        end = (match.get("endDate") or start)[:10]
+        if not start:
+            return None
+
+        r = await self._s.get(
+            _ARCHIVE_URL,
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "start_date": start,
+                "end_date": end,
+                "hourly": _ARCHIVE_HOURLY_VARS,
+                "timezone": town.get("timezone", "UTC"),
+            },
+        )
+        if not r.ok:
+            return None
+        body = r.json()
+        return {
+            "source": "open-meteo",
+            "latitude": body.get("latitude"),
+            "longitude": body.get("longitude"),
+            "timezone": body.get("timezone"),
+            "hourly_units": body.get("hourly_units"),
+            "hourly": body.get("hourly"),
         }
 
     # Series
