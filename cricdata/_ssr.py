@@ -130,10 +130,12 @@ class SSR:
         return result
 
     def match_info(self, series_slug: str, match_slug: str) -> dict:
-        """Match-level metadata: toss, venue, weather, awards, phase stats.
+        """Match-level metadata: toss, venue, captains, weather, awards, phase stats.
 
-        Returns dict with keys: match, toss, venue, weather, player_awards,
-        over_groups (powerplay/middle/death phase aggregates per innings).
+        Returns dict with keys: match, time, toss, venue, captains, weather,
+        player_awards, over_groups (powerplay/middle/death phase aggregates
+        per innings).  Each captain dict has player_id, player_object_id,
+        name, slug, team_id, team_name.
         """
         data = self._scorecard_data(series_slug, match_slug)
         match = data.get("match", {})
@@ -148,6 +150,19 @@ class SSR:
 
         toss_winner_id = match.get("tossWinnerTeamId")
         toss_choice_map = {1: "bat", 2: "field"}
+
+        captains = []
+        for t in match.get("teams", []):
+            cap = t.get("captain")
+            if cap:
+                captains.append({
+                    "player_id": cap.get("id"),
+                    "player_object_id": cap.get("objectId"),
+                    "name": cap.get("longName"),
+                    "slug": cap.get("slug"),
+                    "team_id": t.get("team", {}).get("id"),
+                    "team_name": t.get("team", {}).get("longName"),
+                })
 
         return {
             "match": match,
@@ -169,6 +184,7 @@ class SSR:
                 "decision": toss_choice_map.get(match.get("tossWinnerChoice")),
             },
             "venue": match.get("ground", {}),
+            "captains": captains,
             "weather": support.get("weather"),
             "player_awards": content.get("matchPlayerAwards", []),
             "over_groups": [
@@ -356,6 +372,19 @@ class AsyncSSR:
         toss_winner_id = match.get("tossWinnerTeamId")
         toss_choice_map = {1: "bat", 2: "field"}
 
+        captains = []
+        for t in match.get("teams", []):
+            cap = t.get("captain")
+            if cap:
+                captains.append({
+                    "player_id": cap.get("id"),
+                    "player_object_id": cap.get("objectId"),
+                    "name": cap.get("longName"),
+                    "slug": cap.get("slug"),
+                    "team_id": t.get("team", {}).get("id"),
+                    "team_name": t.get("team", {}).get("longName"),
+                })
+
         return {
             "match": match,
             "time": {
@@ -376,6 +405,7 @@ class AsyncSSR:
                 "decision": toss_choice_map.get(match.get("tossWinnerChoice")),
             },
             "venue": match.get("ground", {}),
+            "captains": captains,
             "weather": support.get("weather"),
             "player_awards": content.get("matchPlayerAwards", []),
             "over_groups": [

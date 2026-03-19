@@ -83,7 +83,7 @@ class CricinfoClient:
         return self._ssr.match_overs(series_slug, match_slug)
 
     def match_info(self, series_slug: str, match_slug: str) -> dict:
-        """Match-level metadata: toss, venue, weather, awards, phase stats."""
+        """Match-level metadata: toss, venue, captains, weather, awards, phase stats."""
         return self._ssr.match_info(series_slug, match_slug)
 
     def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
