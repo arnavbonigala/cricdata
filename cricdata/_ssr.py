@@ -7,6 +7,20 @@ import re
 from typing import Dict, List, Tuple
 
 from ._session import AsyncSession, Session
+from ._types import (
+    CommentaryData,
+    FallOfWicket,
+    MatchInfo,
+    OverSummary,
+    Partnership,
+    RankingFormat,
+    RankingGroup,
+    ScorecardData,
+    SeriesPageData,
+    StandingsData,
+    TeamPageData,
+    WeatherResult,
+)
 
 _NEXT_DATA_RE = re.compile(
     r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>'
@@ -64,10 +78,10 @@ class SSR:
         data = self._page_data("/live-cricket-score")
         return data.get("content", {}).get("matches", [])
 
-    def match_scorecard(self, series_slug: str, match_slug: str) -> dict:
+    def match_scorecard(self, series_slug: str, match_slug: str) -> ScorecardData:
         return self._scorecard_data(series_slug, match_slug)
 
-    def match_commentary(self, series_slug: str, match_slug: str) -> dict:
+    def match_commentary(self, series_slug: str, match_slug: str) -> CommentaryData:
         return self._page_data(
             f"/series/{series_slug}/{match_slug}/ball-by-ball-commentary"
         )
@@ -97,7 +111,7 @@ class SSR:
             result.append(balls)
         return result
 
-    def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[Partnership]]:
         """Partnerships grouped by innings."""
         data = self._scorecard_data(series_slug, match_slug)
         return [
@@ -105,7 +119,7 @@ class SSR:
             for inn in data.get("content", {}).get("innings", [])
         ]
 
-    def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[FallOfWicket]]:
         """Fall of wickets grouped by innings."""
         data = self._scorecard_data(series_slug, match_slug)
         return [
@@ -113,7 +127,7 @@ class SSR:
             for inn in data.get("content", {}).get("innings", [])
         ]
 
-    def match_overs(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    def match_overs(self, series_slug: str, match_slug: str) -> List[List[OverSummary]]:
         """Over-by-over progression grouped by innings (without nested balls).
 
         Each over dict has overNumber, overRuns, overWickets, overRunRate,
@@ -129,14 +143,8 @@ class SSR:
             result.append(overs)
         return result
 
-    def match_info(self, series_slug: str, match_slug: str) -> dict:
-        """Match-level metadata: toss, venue, captains, weather, awards, phase stats.
-
-        Returns dict with keys: match, time, toss, venue, captains, weather,
-        player_awards, over_groups (powerplay/middle/death phase aggregates
-        per innings).  Each captain dict has player_id, player_object_id,
-        name, slug, team_id, team_name.
-        """
+    def match_info(self, series_slug: str, match_slug: str) -> MatchInfo:
+        """Match-level metadata: toss, venue, captains, weather, awards, phase stats."""
         data = self._scorecard_data(series_slug, match_slug)
         match = data.get("match", {})
         content = data.get("content", {})
@@ -193,7 +201,7 @@ class SSR:
             ],
         }
 
-    def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
+    def match_weather(self, series_slug: str, match_slug: str) -> WeatherResult | None:
         """Weather for a match. Uses ESPNCricinfo when available, otherwise
         falls back to Open-Meteo historical data (free, no key required).
 
@@ -211,7 +219,7 @@ class SSR:
 
         return self._open_meteo_weather(match)
 
-    def _open_meteo_weather(self, match: dict) -> dict | None:
+    def _open_meteo_weather(self, match: dict) -> WeatherResult | None:
         town = match.get("ground", {}).get("town", {})
         town_name = town.get("name")
         if not town_name:
@@ -256,32 +264,32 @@ class SSR:
     # Series
     # ------------------------------------------------------------------
 
-    def series(self, slug: str) -> dict:
+    def series(self, slug: str) -> SeriesPageData:
         return self._page_data(f"/series/{slug}")
 
-    def series_matches(self, slug: str) -> dict:
+    def series_matches(self, slug: str) -> SeriesPageData:
         return self._page_data(f"/series/{slug}/match-results")
 
-    def series_standings(self, slug: str) -> dict:
+    def series_standings(self, slug: str) -> StandingsData:
         return self._page_data(f"/series/{slug}/points-table-standings")
 
-    def series_stats(self, slug: str) -> dict:
+    def series_stats(self, slug: str) -> SeriesPageData:
         return self._page_data(f"/series/{slug}/stats")
 
-    def series_squads(self, slug: str) -> dict:
+    def series_squads(self, slug: str) -> SeriesPageData:
         return self._page_data(f"/series/{slug}/squads")
 
-    def series_fixtures(self, slug: str) -> dict:
+    def series_fixtures(self, slug: str) -> SeriesPageData:
         return self._page_data(f"/series/{slug}/match-schedule-fixtures")
 
     # ------------------------------------------------------------------
     # Teams & Rankings
     # ------------------------------------------------------------------
 
-    def team(self, slug: str) -> dict:
+    def team(self, slug: str) -> TeamPageData:
         return self._page_data(f"/team/{slug}")
 
-    def team_rankings(self, fmt: str) -> List[dict]:
+    def team_rankings(self, fmt: RankingFormat) -> List[RankingGroup]:
         page_id = _TEAM_RANKING_PAGES.get(fmt)
         if page_id is None:
             raise ValueError(f"Unknown format {fmt!r}, use: {list(_TEAM_RANKING_PAGES)}")
@@ -312,10 +320,10 @@ class AsyncSSR:
         data = await self._page_data("/live-cricket-score")
         return data.get("content", {}).get("matches", [])
 
-    async def match_scorecard(self, series_slug: str, match_slug: str) -> dict:
+    async def match_scorecard(self, series_slug: str, match_slug: str) -> ScorecardData:
         return await self._scorecard_data(series_slug, match_slug)
 
-    async def match_commentary(self, series_slug: str, match_slug: str) -> dict:
+    async def match_commentary(self, series_slug: str, match_slug: str) -> CommentaryData:
         return await self._page_data(
             f"/series/{series_slug}/{match_slug}/ball-by-ball-commentary"
         )
@@ -332,21 +340,21 @@ class AsyncSSR:
             result.append(balls)
         return result
 
-    async def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    async def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[Partnership]]:
         data = await self._scorecard_data(series_slug, match_slug)
         return [
             inn.get("inningPartnerships", [])
             for inn in data.get("content", {}).get("innings", [])
         ]
 
-    async def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    async def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[FallOfWicket]]:
         data = await self._scorecard_data(series_slug, match_slug)
         return [
             inn.get("inningFallOfWickets", [])
             for inn in data.get("content", {}).get("innings", [])
         ]
 
-    async def match_overs(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    async def match_overs(self, series_slug: str, match_slug: str) -> List[List[OverSummary]]:
         data = await self._scorecard_data(series_slug, match_slug)
         result = []
         for inn in data.get("content", {}).get("innings", []):
@@ -357,7 +365,7 @@ class AsyncSSR:
             result.append(overs)
         return result
 
-    async def match_info(self, series_slug: str, match_slug: str) -> dict:
+    async def match_info(self, series_slug: str, match_slug: str) -> MatchInfo:
         data = await self._scorecard_data(series_slug, match_slug)
         match = data.get("match", {})
         content = data.get("content", {})
@@ -414,7 +422,7 @@ class AsyncSSR:
             ],
         }
 
-    async def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
+    async def match_weather(self, series_slug: str, match_slug: str) -> WeatherResult | None:
         data = await self._scorecard_data(series_slug, match_slug)
         match = data.get("match", {})
         support = (data.get("content", {}).get("supportInfo") or {})
@@ -425,7 +433,7 @@ class AsyncSSR:
 
         return await self._open_meteo_weather(match)
 
-    async def _open_meteo_weather(self, match: dict) -> dict | None:
+    async def _open_meteo_weather(self, match: dict) -> WeatherResult | None:
         town = match.get("ground", {}).get("town", {})
         town_name = town.get("name")
         if not town_name:
@@ -468,30 +476,30 @@ class AsyncSSR:
 
     # Series
 
-    async def series(self, slug: str) -> dict:
+    async def series(self, slug: str) -> SeriesPageData:
         return await self._page_data(f"/series/{slug}")
 
-    async def series_matches(self, slug: str) -> dict:
+    async def series_matches(self, slug: str) -> SeriesPageData:
         return await self._page_data(f"/series/{slug}/match-results")
 
-    async def series_standings(self, slug: str) -> dict:
+    async def series_standings(self, slug: str) -> StandingsData:
         return await self._page_data(f"/series/{slug}/points-table-standings")
 
-    async def series_stats(self, slug: str) -> dict:
+    async def series_stats(self, slug: str) -> SeriesPageData:
         return await self._page_data(f"/series/{slug}/stats")
 
-    async def series_squads(self, slug: str) -> dict:
+    async def series_squads(self, slug: str) -> SeriesPageData:
         return await self._page_data(f"/series/{slug}/squads")
 
-    async def series_fixtures(self, slug: str) -> dict:
+    async def series_fixtures(self, slug: str) -> SeriesPageData:
         return await self._page_data(f"/series/{slug}/match-schedule-fixtures")
 
     # Teams & Rankings
 
-    async def team(self, slug: str) -> dict:
+    async def team(self, slug: str) -> TeamPageData:
         return await self._page_data(f"/team/{slug}")
 
-    async def team_rankings(self, fmt: str) -> List[dict]:
+    async def team_rankings(self, fmt: RankingFormat) -> List[RankingGroup]:
         page_id = _TEAM_RANKING_PAGES.get(fmt)
         if page_id is None:
             raise ValueError(f"Unknown format {fmt!r}, use: {list(_TEAM_RANKING_PAGES)}")

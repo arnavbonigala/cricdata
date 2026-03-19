@@ -3,12 +3,37 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from ._espn import AsyncESPN, ESPN
 from ._session import AsyncSession, Session
 from ._ssr import AsyncSSR, SSR
 from ._statsguru import AsyncStatsguru, Statsguru
+from ._types import (
+    BallItem,
+    CareerStats,
+    CommentaryData,
+    FallOfWicket,
+    Format,
+    GroundAverages,
+    InningsList,
+    MatchInfo,
+    MatchList,
+    OverSummary,
+    Partnership,
+    PlayerBio,
+    PlayerSearchResult,
+    RankingFormat,
+    RankingGroup,
+    ScorecardData,
+    SeriesPageData,
+    SeriesList,
+    StandingsData,
+    StatType,
+    StatsFilter,
+    TeamPageData,
+    WeatherResult,
+)
 
 _TRAILING_ID_RE = re.compile(r"-(\d+)$")
 
@@ -44,11 +69,11 @@ class CricinfoClient:
         """All currently live / recent matches."""
         return self._ssr.live_matches()
 
-    def match_scorecard(self, series_slug: str, match_slug: str) -> dict:
+    def match_scorecard(self, series_slug: str, match_slug: str) -> ScorecardData:
         """Full scorecard for a match (innings, batsmen, bowlers, FOW)."""
         return self._ssr.match_scorecard(series_slug, match_slug)
 
-    def match_commentary(self, series_slug: str, match_slug: str) -> dict:
+    def match_commentary(self, series_slug: str, match_slug: str) -> CommentaryData:
         """Ball-by-ball commentary for a match."""
         return self._ssr.match_commentary(series_slug, match_slug)
 
@@ -56,37 +81,28 @@ class CricinfoClient:
     # Matches — detailed analytics
     # ------------------------------------------------------------------
 
-    def match_ball_by_ball(self, series_slug: str, match_slug: str) -> List[List[dict]]:
-        """Full ball-by-ball for a match, grouped by innings.
-
-        Each ball dict includes: playType, text, shortText, scoreValue,
-        batsman, bowler, over, innings, dismissal, team, athletesInvolved,
-        and cumulative innings/over state.
-        """
+    def match_ball_by_ball(self, series_slug: str, match_slug: str) -> List[List[BallItem]]:
+        """Full ball-by-ball for a match, grouped by innings."""
         mid = self._extract_match_id(match_slug)
         return self._espn.match_ball_by_ball(mid)
 
-    def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[Partnership]]:
         """Partnerships grouped by innings."""
         return self._ssr.match_partnerships(series_slug, match_slug)
 
-    def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[FallOfWicket]]:
         """Fall of wickets grouped by innings."""
         return self._ssr.match_fall_of_wickets(series_slug, match_slug)
 
-    def match_overs(self, series_slug: str, match_slug: str) -> List[List[dict]]:
-        """Over-by-over progression grouped by innings.
-
-        Each over dict has overNumber, overRuns, overWickets, overRunRate,
-        requiredRunRate, requiredRuns, remainingBalls, predictions, bowlers.
-        """
+    def match_overs(self, series_slug: str, match_slug: str) -> List[List[OverSummary]]:
+        """Over-by-over progression grouped by innings."""
         return self._ssr.match_overs(series_slug, match_slug)
 
-    def match_info(self, series_slug: str, match_slug: str) -> dict:
+    def match_info(self, series_slug: str, match_slug: str) -> MatchInfo:
         """Match-level metadata: toss, venue, captains, weather, awards, phase stats."""
         return self._ssr.match_info(series_slug, match_slug)
 
-    def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
+    def match_weather(self, series_slug: str, match_slug: str) -> WeatherResult | None:
         """Weather conditions for a match.
 
         Returns ESPNCricinfo weather for live matches or Open-Meteo
@@ -100,27 +116,27 @@ class CricinfoClient:
     # Series
     # ------------------------------------------------------------------
 
-    def series(self, slug: str) -> dict:
+    def series(self, slug: str) -> SeriesPageData:
         """Series metadata and content feed."""
         return self._ssr.series(slug)
 
-    def series_matches(self, slug: str) -> dict:
+    def series_matches(self, slug: str) -> SeriesPageData:
         """Completed match results for a series."""
         return self._ssr.series_matches(slug)
 
-    def series_standings(self, slug: str) -> dict:
+    def series_standings(self, slug: str) -> StandingsData:
         """Points table / standings."""
         return self._ssr.series_standings(slug)
 
-    def series_stats(self, slug: str) -> dict:
+    def series_stats(self, slug: str) -> SeriesPageData:
         """Top batsmen, bowlers, and smart stats for a series."""
         return self._ssr.series_stats(slug)
 
-    def series_squads(self, slug: str) -> dict:
+    def series_squads(self, slug: str) -> SeriesPageData:
         """All team squads with player bios for a series."""
         return self._ssr.series_squads(slug)
 
-    def series_fixtures(self, slug: str) -> dict:
+    def series_fixtures(self, slug: str) -> SeriesPageData:
         """Match schedule / upcoming fixtures for a series."""
         return self._ssr.series_fixtures(slug)
 
@@ -128,23 +144,23 @@ class CricinfoClient:
     # Teams
     # ------------------------------------------------------------------
 
-    def team(self, slug: str) -> dict:
+    def team(self, slug: str) -> TeamPageData:
         """Team info, recent results, squads, top performers."""
         return self._ssr.team(slug)
 
     def team_career_stats(
         self,
         team_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> CareerStats:
         """Team W/L/D record with per-opposition breakdown from Statsguru."""
         return self._statsguru.team_career_stats(team_id, fmt)
 
     def team_match_list(
         self,
         team_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> MatchList:
         """Team match-by-match results from Statsguru."""
         return self._statsguru.team_match_list(team_id, fmt)
 
@@ -152,67 +168,61 @@ class CricinfoClient:
     # Players
     # ------------------------------------------------------------------
 
-    def search_players(self, query: str, limit: int = 10) -> List[dict]:
+    def search_players(self, query: str, limit: int = 10) -> List[PlayerSearchResult]:
         """Search for players by name. Returns list with id, displayName, etc."""
         return self._espn.search_players(query, limit=limit)
 
-    def player_bio(self, player_id: Union[int, str]) -> dict:
+    def player_bio(self, player_id: Union[int, str]) -> PlayerBio:
         """Player bio: name, DOB, age, bat/bowl style, position, team, headshot."""
         return self._espn.player_bio(player_id)
 
     def player_career_stats(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
-        """Career averages + per-opposition breakdowns from Statsguru.
-
-        fmt: test, odi, t20i, fc, lista, t20
-        stat_type: batting, bowling, fielding, allround
-        filters: optional dict with keys opposition, home_or_away,
-                 start_date, end_date, ground
-        """
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> CareerStats:
+        """Career averages + per-opposition breakdowns from Statsguru."""
         return self._statsguru.player_career_stats(player_id, fmt, stat_type, filters)
 
     def player_innings(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> InningsList:
         """Innings-by-innings match history from Statsguru."""
         return self._statsguru.player_innings(player_id, fmt, stat_type, filters)
 
     def player_match_list(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> MatchList:
         """Match-by-match scores from Statsguru."""
         return self._statsguru.player_match_list(player_id, fmt, stat_type, filters)
 
     def player_series_list(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> SeriesList:
         """Per-series averages from Statsguru."""
         return self._statsguru.player_series_list(player_id, fmt, stat_type, filters)
 
     def player_ground_stats(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> GroundAverages:
         """Per-venue averages from Statsguru."""
         return self._statsguru.player_ground_stats(player_id, fmt, stat_type, filters)
 
@@ -223,8 +233,8 @@ class CricinfoClient:
     def ground_stats(
         self,
         ground_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> CareerStats:
         """Venue stats: average score, W/L, RPO by team from Statsguru."""
         return self._statsguru.ground_stats(ground_id, fmt)
 
@@ -232,7 +242,7 @@ class CricinfoClient:
     # Rankings
     # ------------------------------------------------------------------
 
-    def team_rankings(self, fmt: str = "test") -> List[dict]:
+    def team_rankings(self, fmt: RankingFormat = "test") -> List[RankingGroup]:
         """ICC team rankings (test, odi, or t20i)."""
         return self._ssr.team_rankings(fmt)
 
@@ -263,131 +273,131 @@ class AsyncCricinfoClient:
     async def live_matches(self) -> List[dict]:
         return await self._ssr.live_matches()
 
-    async def match_scorecard(self, series_slug: str, match_slug: str) -> dict:
+    async def match_scorecard(self, series_slug: str, match_slug: str) -> ScorecardData:
         return await self._ssr.match_scorecard(series_slug, match_slug)
 
-    async def match_commentary(self, series_slug: str, match_slug: str) -> dict:
+    async def match_commentary(self, series_slug: str, match_slug: str) -> CommentaryData:
         return await self._ssr.match_commentary(series_slug, match_slug)
 
     # ------------------------------------------------------------------
     # Matches — detailed analytics
     # ------------------------------------------------------------------
 
-    async def match_ball_by_ball(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    async def match_ball_by_ball(self, series_slug: str, match_slug: str) -> List[List[BallItem]]:
         mid = self._extract_match_id(match_slug)
         return await self._espn.match_ball_by_ball(mid)
 
-    async def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    async def match_partnerships(self, series_slug: str, match_slug: str) -> List[List[Partnership]]:
         return await self._ssr.match_partnerships(series_slug, match_slug)
 
-    async def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    async def match_fall_of_wickets(self, series_slug: str, match_slug: str) -> List[List[FallOfWicket]]:
         return await self._ssr.match_fall_of_wickets(series_slug, match_slug)
 
-    async def match_overs(self, series_slug: str, match_slug: str) -> List[List[dict]]:
+    async def match_overs(self, series_slug: str, match_slug: str) -> List[List[OverSummary]]:
         return await self._ssr.match_overs(series_slug, match_slug)
 
-    async def match_info(self, series_slug: str, match_slug: str) -> dict:
+    async def match_info(self, series_slug: str, match_slug: str) -> MatchInfo:
         return await self._ssr.match_info(series_slug, match_slug)
 
-    async def match_weather(self, series_slug: str, match_slug: str) -> dict | None:
+    async def match_weather(self, series_slug: str, match_slug: str) -> WeatherResult | None:
         return await self._ssr.match_weather(series_slug, match_slug)
 
     # ------------------------------------------------------------------
     # Series
     # ------------------------------------------------------------------
 
-    async def series(self, slug: str) -> dict:
+    async def series(self, slug: str) -> SeriesPageData:
         return await self._ssr.series(slug)
 
-    async def series_matches(self, slug: str) -> dict:
+    async def series_matches(self, slug: str) -> SeriesPageData:
         return await self._ssr.series_matches(slug)
 
-    async def series_standings(self, slug: str) -> dict:
+    async def series_standings(self, slug: str) -> StandingsData:
         return await self._ssr.series_standings(slug)
 
-    async def series_stats(self, slug: str) -> dict:
+    async def series_stats(self, slug: str) -> SeriesPageData:
         return await self._ssr.series_stats(slug)
 
-    async def series_squads(self, slug: str) -> dict:
+    async def series_squads(self, slug: str) -> SeriesPageData:
         return await self._ssr.series_squads(slug)
 
-    async def series_fixtures(self, slug: str) -> dict:
+    async def series_fixtures(self, slug: str) -> SeriesPageData:
         return await self._ssr.series_fixtures(slug)
 
     # ------------------------------------------------------------------
     # Teams
     # ------------------------------------------------------------------
 
-    async def team(self, slug: str) -> dict:
+    async def team(self, slug: str) -> TeamPageData:
         return await self._ssr.team(slug)
 
     async def team_career_stats(
         self,
         team_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> CareerStats:
         return await self._statsguru.team_career_stats(team_id, fmt)
 
     async def team_match_list(
         self,
         team_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> MatchList:
         return await self._statsguru.team_match_list(team_id, fmt)
 
     # ------------------------------------------------------------------
     # Players
     # ------------------------------------------------------------------
 
-    async def search_players(self, query: str, limit: int = 10) -> List[dict]:
+    async def search_players(self, query: str, limit: int = 10) -> List[PlayerSearchResult]:
         return await self._espn.search_players(query, limit=limit)
 
-    async def player_bio(self, player_id: Union[int, str]) -> dict:
+    async def player_bio(self, player_id: Union[int, str]) -> PlayerBio:
         return await self._espn.player_bio(player_id)
 
     async def player_career_stats(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> CareerStats:
         return await self._statsguru.player_career_stats(player_id, fmt, stat_type, filters)
 
     async def player_innings(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> InningsList:
         return await self._statsguru.player_innings(player_id, fmt, stat_type, filters)
 
     async def player_match_list(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> MatchList:
         return await self._statsguru.player_match_list(player_id, fmt, stat_type, filters)
 
     async def player_series_list(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> SeriesList:
         return await self._statsguru.player_series_list(player_id, fmt, stat_type, filters)
 
     async def player_ground_stats(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> GroundAverages:
         return await self._statsguru.player_ground_stats(player_id, fmt, stat_type, filters)
 
     # ------------------------------------------------------------------
@@ -397,15 +407,15 @@ class AsyncCricinfoClient:
     async def ground_stats(
         self,
         ground_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> CareerStats:
         return await self._statsguru.ground_stats(ground_id, fmt)
 
     # ------------------------------------------------------------------
     # Rankings
     # ------------------------------------------------------------------
 
-    async def team_rankings(self, fmt: str = "test") -> List[dict]:
+    async def team_rankings(self, fmt: RankingFormat = "test") -> List[RankingGroup]:
         return await self._ssr.team_rankings(fmt)
 
     # ------------------------------------------------------------------

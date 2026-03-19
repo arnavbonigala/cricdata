@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from ._session import AsyncSession, Session
+from ._types import (
+    CareerStats,
+    Format,
+    GroundAverages,
+    InningsList,
+    MatchList,
+    SeriesList,
+    StatType,
+    StatsFilter,
+)
 
 _PLAYER_BASE = "https://stats.espncricinfo.com/ci/engine/player"
 _TEAM_BASE = "https://stats.espncricinfo.com/ci/engine/team"
@@ -65,7 +75,7 @@ def _rows_to_dicts(rows: List[List[str]]) -> List[dict]:
     return out
 
 
-def _summary_and_detail(tables: List[List[List[str]]], detail_key: str) -> dict:
+def _summary_and_detail(tables: List[List[List[str]]], detail_key: str) -> Any:
     result: dict = {"summary": {}, detail_key: []}
     if tables:
         summary_rows = _rows_to_dicts(tables[0])
@@ -113,10 +123,10 @@ class Statsguru:
     def _player_url(
         self,
         player_id: Union[int, str],
-        fmt: str,
-        stat_type: str,
+        fmt: Format,
+        stat_type: StatType,
         view: Optional[str] = None,
-        filters: Optional[Dict[str, Union[str, int]]] = None,
+        filters: Optional[StatsFilter] = None,
     ) -> str:
         cls = _class_param(fmt)
         parts = f"class={cls};orderby=default;template=results;type={stat_type}"
@@ -132,10 +142,10 @@ class Statsguru:
     def player_career_stats(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> CareerStats:
         """Career summary + per-opposition breakdown.
 
         Returns {"summary": {...}, "breakdowns": [...]}.
@@ -148,10 +158,10 @@ class Statsguru:
     def player_innings(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> InningsList:
         """Innings-by-innings list.
 
         Returns {"summary": {...}, "innings": [...]}.
@@ -164,10 +174,10 @@ class Statsguru:
     def player_match_list(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> MatchList:
         """Match-by-match scores.
 
         Returns {"summary": {...}, "matches": [...]}.
@@ -180,10 +190,10 @@ class Statsguru:
     def player_series_list(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> SeriesList:
         """Per-series averages.
 
         Returns {"summary": {...}, "series": [...]}.
@@ -196,10 +206,10 @@ class Statsguru:
     def player_ground_stats(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> GroundAverages:
         """Per-venue averages.
 
         Returns {"summary": {...}, "grounds": [...]}.
@@ -216,8 +226,8 @@ class Statsguru:
     def team_career_stats(
         self,
         team_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> CareerStats:
         """Team W/L/D record with per-opposition breakdown.
 
         Returns {"summary": {...}, "breakdowns": [...]}.
@@ -230,8 +240,8 @@ class Statsguru:
     def team_match_list(
         self,
         team_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> MatchList:
         """Team match-by-match results.
 
         Returns {"summary": {...}, "matches": [...]}.
@@ -248,8 +258,8 @@ class Statsguru:
     def ground_stats(
         self,
         ground_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> CareerStats:
         """Venue stats: average score, W/L, RPO by team.
 
         Returns {"summary": {...}, "breakdowns": [...]}.
@@ -274,10 +284,10 @@ class AsyncStatsguru:
     def _player_url(
         self,
         player_id: Union[int, str],
-        fmt: str,
-        stat_type: str,
+        fmt: Format,
+        stat_type: StatType,
         view: Optional[str] = None,
-        filters: Optional[Dict[str, Union[str, int]]] = None,
+        filters: Optional[StatsFilter] = None,
     ) -> str:
         cls = _class_param(fmt)
         parts = f"class={cls};orderby=default;template=results;type={stat_type}"
@@ -289,10 +299,10 @@ class AsyncStatsguru:
     async def player_career_stats(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> CareerStats:
         html = await self._fetch_url(
             self._player_url(player_id, fmt, stat_type, filters=filters)
         )
@@ -301,10 +311,10 @@ class AsyncStatsguru:
     async def player_innings(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> InningsList:
         html = await self._fetch_url(
             self._player_url(player_id, fmt, stat_type, view="innings", filters=filters)
         )
@@ -313,10 +323,10 @@ class AsyncStatsguru:
     async def player_match_list(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> MatchList:
         html = await self._fetch_url(
             self._player_url(player_id, fmt, stat_type, view="match", filters=filters)
         )
@@ -325,10 +335,10 @@ class AsyncStatsguru:
     async def player_series_list(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> SeriesList:
         html = await self._fetch_url(
             self._player_url(player_id, fmt, stat_type, view="series", filters=filters)
         )
@@ -337,10 +347,10 @@ class AsyncStatsguru:
     async def player_ground_stats(
         self,
         player_id: Union[int, str],
-        fmt: str = "test",
-        stat_type: str = "batting",
-        filters: Optional[Dict[str, Union[str, int]]] = None,
-    ) -> dict:
+        fmt: Format = "test",
+        stat_type: StatType = "batting",
+        filters: Optional[StatsFilter] = None,
+    ) -> GroundAverages:
         html = await self._fetch_url(
             self._player_url(player_id, fmt, stat_type, view="ground", filters=filters)
         )
@@ -349,8 +359,8 @@ class AsyncStatsguru:
     async def team_career_stats(
         self,
         team_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> CareerStats:
         cls = _class_param(fmt)
         url = f"{_TEAM_BASE}/{team_id}.html?class={cls};orderby=default;template=results;type=team"
         html = await self._fetch_url(url)
@@ -359,8 +369,8 @@ class AsyncStatsguru:
     async def team_match_list(
         self,
         team_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> MatchList:
         cls = _class_param(fmt)
         url = f"{_TEAM_BASE}/{team_id}.html?class={cls};orderby=default;template=results;type=team;view=results"
         html = await self._fetch_url(url)
@@ -369,8 +379,8 @@ class AsyncStatsguru:
     async def ground_stats(
         self,
         ground_id: Union[int, str],
-        fmt: str = "test",
-    ) -> dict:
+        fmt: Format = "test",
+    ) -> CareerStats:
         cls = _class_param(fmt)
         url = f"{_GROUND_BASE}/{ground_id}.html?class={cls};orderby=default;template=results;type=team"
         html = await self._fetch_url(url)
